@@ -1,48 +1,47 @@
 <template>
   <div
-    class="date-selector"
-    @mousedown="_touchstart"
-    @mouseup="_touchend"
-    @touchstart="_touchstart"
-    @touchend="_touchend"
+    class="picker"
+    @mousedown="touchstart"
+    @mouseup="touchend"
+    @touchstart="touchstart"
+    @touchend="touchend"
   >
-    <div class="year" id="year1">
-      <div class="select-wrap">
-        <ul class="select-options" :style="listStyle">
+    <div class="picker_wrapper">
+      <ul class="picker_options" :style="listStyle">
+        <li
+          v-for="(item, i) in source"
+          :key="item.value"
+          class="picker_option"
+          :style="{
+            top: `${itemHeight * -0.5}px`,
+            height: `${itemHeight}px`,
+            'line-height': `${itemHeight}px`,
+            transform: `rotateX(${-rotationAngle * i}deg) translate3d(0, 0, ${radius}px)`,
+            visibility: item.visibility ? 'visible' : 'hidden',
+          }"
+          :data-index="i"
+        >
+          {{ item.text }}
+        </li>
+      </ul>
+
+      <div
+        class="picker_chosen"
+        :style="{
+          height: `${itemHeight}px`,
+          'line-height': `${itemHeight}px`,
+        }"
+      >
+        <ul class="picker_chosen_list" :style="highlightListStyle">
           <li
-            v-for="(item, i) in source"
-            :key="item.value"
-            class="select-option"
-            :style="{
-              top: `${itemHeight * -0.5}px`,
-              height: `${itemHeight}px`,
-              'line-height': `${itemHeight}px`,
-              transform: `rotateX(${-rotationAngle * i}deg) translate3d(0, 0, ${radius}px)`,
-              visibility: item.visibility ? 'visible' : 'hidden',
-            }"
-            :data-index="i"
+            v-for="(item, i) in options"
+            :key="i"
+            class="picker_chosen_item"
+            :style="`height: ${itemHeight}px`"
           >
             {{ item.text }}
           </li>
         </ul>
-
-        <div
-          class="highlight"
-          :style="{
-            height: `${itemHeight}px`,
-            'line-height': `${itemHeight}px`,
-          }"
-        >
-          <ul class="highlight-list" :style="highlightListStyle">
-            <li
-              v-for="(item, i) in options"
-              class="highlight-item"
-              :style="`height: ${itemHeight}px`"
-            >
-              {{ item.text }}
-            </li>
-          </ul>
-        </div>
       </div>
     </div>
   </div>
@@ -87,20 +86,24 @@ const easing = {
 };
 
 export default Vue.extend({
-  name: 'Picker', // vue component name
+  name: 'Picker',
   props: {
+    /** An array of options in format { value: string, text: string } to be displayed in the Picker */
     options: {
       type: Array as PropType<PickerValue[]>,
       default: () => ([]),
     },
+
     value: {
       type: Object as PropType<PickerValue|null>,
       default: null,
     },
+
     radius: {
       type: Number,
       default: 150,
     },
+
     itemHeight: {
       type: Number,
       default: 40,
@@ -132,13 +135,14 @@ export default Vue.extend({
       }
     },
 
+    /** If 'infinite' is passed, then you can scroll the Picker forever, all values will repeat */
     type: {
       type: String as PropType<'normal' | 'infinite'>,
       default: 'normal',
       validator: function (value) {
         return ['normal', 'infinite'].includes(value);
       }
-    }
+    },
   },
 
   model: {
@@ -157,7 +161,7 @@ export default Vue.extend({
 
       source: this.options, // Options {value: xx, text: xx}
       selected: this.value || this.options?.[0] || null,
-      selectedIndex: this.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0,
+      selectedIndex: this.value?.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0,
 
       maxAcceleration: 10,
       requestAnimationId: 0,
@@ -177,31 +181,47 @@ export default Vue.extend({
   },
 
   mounted () {
-    document.addEventListener('mousedown', this._touchstart);
-    document.addEventListener('mouseup', this._touchend);
-    this._selectByScroll(this.selectedIndex);
+    document.addEventListener('mousedown', this.touchstart);
+    document.addEventListener('mouseup', this.touchend);
+
+    // Move to the initial value
+    const time = 0.125 * (this.selectedIndex - 0);
+    this.animateToScroll(0, this.selectedIndex, time);
+  },
+
+  watch: {
+    value (val: PickerValue) {
+      if (val?.value === this.selected?.value) return;
+
+      const newIndex = val?.value ? this.source.findIndex((option) => option.value === this.value?.value) : 0;
+      const time = 0.125 * (Math.abs(newIndex - this.selectedIndex));
+
+      this.selected = val;
+      this.selectedIndex = newIndex;
+      this.animateToScroll(this.selectedIndex, newIndex, time);
+    },
   },
 
   methods: {
-    _touchstart (e: MouseOrTouch) {
-      if (e.target) e.target.addEventListener('touchmove', this._touchmove);
-      document.addEventListener('mousemove', this._touchmove);
+    touchstart (e: MouseOrTouch) {
+      if (e.target) e.target.addEventListener('touchmove', this.touchmove);
+      document.addEventListener('mousemove', this.touchmove);
 
       const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
       this.touchData.startY = eventY;
       this.touchData.yArr = [[eventY, new Date().getTime()]];
       this.touchData.touchScroll = this.selectedIndex;
-      this._stop();
+      this.stop();
     },
 
-    _touchmove (e: MouseOrTouch) {
+    touchmove (e: MouseOrTouch) {
       const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
       this.touchData.yArr.push([eventY, new Date().getTime()]);
 
+      // Calculate new selected index by the item height and the scrolled amount
       const scrollAdd = (this.touchData.startY - eventY) / this.itemHeight;
       let moveToScroll = scrollAdd + this.selectedIndex;
 
-      // When scrolling is not infinite, out of range makes scrolling difficult
       if (this.type === 'normal') {
         if (moveToScroll < 0) {
           moveToScroll *= 0.3;
@@ -209,15 +229,15 @@ export default Vue.extend({
           moveToScroll = this.source.length + (moveToScroll - this.source.length) * 0.3;
         }
       } else {
-        moveToScroll = this._normalizeScroll(moveToScroll);
+        moveToScroll = this.normalizeScroll(moveToScroll);
       }
 
-      this.touchData.touchScroll = this._moveTo(moveToScroll);
+      this.touchData.touchScroll = this.moveTo(moveToScroll);
     },
 
-    _touchend (e: TouchEvent) {
-      if (e.target) e.target.removeEventListener('touchmove', this._touchmove);
-      document.removeEventListener('mousemove', this._touchmove);
+    touchend (e: TouchEvent) {
+      if (e.target) e.target.removeEventListener('touchmove', this.touchmove);
+      document.removeEventListener('mousemove', this.touchmove);
 
       let velocity;
 
@@ -237,10 +257,10 @@ export default Vue.extend({
       }
 
       this.selectedIndex = this.touchData.touchScroll;
-      this._animateMoveByVelocity(velocity);
+      this.animateMoveByVelocity(velocity);
     },
 
-    _normalizeScroll (scroll: number): number {
+    normalizeScroll (scroll: number): number {
       let normalizedScroll = scroll;
 
       while (normalizedScroll < 0) {
@@ -251,24 +271,25 @@ export default Vue.extend({
       return normalizedScroll;
     },
 
-    _moveTo (scroll: number): number {
+    /** Immediate move to some index in the options array */
+    moveTo (newIndex: number): number {
       if (this.type === 'infinite') {
-        this.selectedIndex = this._normalizeScroll(scroll);
+        this.selectedIndex = this.normalizeScroll(newIndex);
       }
 
       if (!this.source.length) {
         return 0;
       }
 
-      this.listStyle.transform = `translate3d(0, 0, ${-this.radius}px) rotateX(${this.rotationAngle * scroll}deg)`;
-      this.highlightListStyle.transform = `translate3d(0, ${-(scroll) * this.itemHeight}px, 0)`;
+      this.listStyle.transform = `translate3d(0, 0, ${-this.radius}px) rotateX(${this.rotationAngle * newIndex}deg)`;
+      this.highlightListStyle.transform = `translate3d(0, ${-(newIndex) * this.itemHeight}px, 0)`;
 
       this.source = this.source.map((item, index) => {
-        item.visibility = Math.abs(index - scroll) <= this.visibleOptionsAmount / 2;
+        item.visibility = Math.abs(index - newIndex) <= this.visibleOptionsAmount / 2;
         return item;
       });
 
-      return scroll;
+      return newIndex;
     },
 
     /**
@@ -276,7 +297,7 @@ export default Vue.extend({
      * @param {init} initV， initV Will be reset
      * To ensure scrolling to integers based on acceleration of scroll (Guaranteed to pass Scroll Target a selected value)
      */
-    async _animateMoveByVelocity (initV: number) {
+    async animateMoveByVelocity (initV: number) {
       let initScroll;
       let finalScroll;
       let totalScrollLen;
@@ -292,7 +313,7 @@ export default Vue.extend({
           totalScrollLen = initScroll - finalScroll;
           t = Math.sqrt(Math.abs(totalScrollLen / a));
 
-          await this._animateToScroll(initScroll, finalScroll, t);
+          await this.animateToScroll(initScroll, finalScroll, t);
         } else {
           initScroll = this.selectedIndex;
           a = initV > 0 ? -this.sensitivity : this.sensitivity; // Is acceleration or deceleration
@@ -303,22 +324,22 @@ export default Vue.extend({
 
           totalScrollLen = finalScroll - initScroll;
           t = Math.sqrt(Math.abs(totalScrollLen / a));
-          await this._animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
+          await this.animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
         }
       } else {
         a = initV > 0 ? -this.sensitivity : this.sensitivity; // Deceleration/Acceleration
         t = Math.abs(initV / a); // Speed reduced to 0 takes time
         totalScrollLen = initV * t + a * t * t / 2; // Total rolling length
         finalScroll = Math.round(this.selectedIndex + totalScrollLen); // Round to ensure accuracy and finally scroll as an integer
-        await this._animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
+        await this.animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
       }
 
-      this._selectByScroll(this.selectedIndex);
+      this.selectByScroll(this.selectedIndex);
     },
 
-    _animateToScroll (initScroll: number, finalScroll: number, time: number, easingName: keyof typeof easing = 'easeOutQuart') {
+    animateToScroll (initScroll: number, finalScroll: number, time: number, easingName: keyof typeof easing = 'easeOutQuart') {
       if (initScroll === finalScroll || time === 0) {
-        this._moveTo(initScroll);
+        this.moveTo(initScroll);
 
         return;
       }
@@ -332,30 +353,30 @@ export default Vue.extend({
           pass = new Date().getTime() / 1000 - start;
 
           if (pass < time) {
-            this.selectedIndex = this._moveTo(initScroll + easing[easingName](pass / time) * totalScrollLen);
+            this.selectedIndex = this.moveTo(initScroll + easing[easingName](pass / time) * totalScrollLen);
             this.requestAnimationId = requestAnimationFrame(tick);
           } else {
             resolve();
-            this._stop();
-            this.selectedIndex = this._moveTo(initScroll + totalScrollLen);
+            this.stop();
+            this.selectedIndex = this.moveTo(initScroll + totalScrollLen);
           }
         };
         tick();
       });
     },
 
-    _stop () {
+    stop () {
       cancelAnimationFrame(this.requestAnimationId);
     },
 
-    _selectByScroll (scroll: number) {
-      scroll = this._normalizeScroll(scroll) | 0;
+    selectByScroll (scroll: number) {
+      scroll = this.normalizeScroll(scroll) | 0;
       if (scroll > this.source.length - 1) {
         scroll = this.source.length - 1;
-        this._moveTo(scroll);
+        this.moveTo(scroll);
       }
 
-      this._moveTo(scroll);
+      this.moveTo(scroll);
       this.selectedIndex = scroll;
       this.selected = this.source[scroll];
       this.$emit('change', this.selected);
@@ -370,16 +391,30 @@ body {
   background: #000;
 }
 
-.select-wrap {
+.picker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  width: 600px;
+  height: 300px;
+  transform: translate(-50%, -50%);
+  perspective: 2000px;
+}
+
+.picker_wrapper {
+  flex: 1;
   position: relative;
   height: 100%;
   text-align: center;
   overflow: hidden;
-  font-size: 20px;
+  font-size: 18px;
   color: #ddd;
 }
 
-.select-wrap:before, .select-wrap:after {
+.picker_wrapper:before, .picker_wrapper:after {
   position: absolute;
   z-index: 1;
   display: block;
@@ -389,17 +424,17 @@ body {
   pointer-events: none;
 }
 
-.select-wrap:before {
+.picker_wrapper:before {
   top: 0;
   background-image: linear-gradient(to bottom, rgba(1, 1, 1, 0.5), rgba(1, 1, 1, 0));
 }
 
-.select-wrap:after {
+.picker_wrapper:after {
   bottom: 0;
   background-image: linear-gradient(to top, rgba(1, 1, 1, 0.5), rgba(1, 1, 1, 0));
 }
 
-.select-wrap .select-options {
+.picker_options {
   position: absolute;
   top: 50%;
   left: 0;
@@ -415,7 +450,7 @@ body {
   list-style: none;
 }
 
-.select-wrap .select-option {
+.picker_option {
   position: absolute;
   top: 0;
   left: 0;
@@ -425,13 +460,7 @@ body {
   -webkit-font-smoothing: subpixel-antialiased;
 }
 
-/*@for $i from 1 through 100 {
-  &:nth-child(#{$i}) {
-    transform: rotateX(-18deg * ($i - 1)) translateZ(150px);
-  }
-}*/
-
-.highlight {
+.picker_chosen {
   position: absolute;
   top: 50%;
   transform: translate(0, -50%);
@@ -439,11 +468,11 @@ body {
   background-color: #000;
   border-top: 1px solid #333;
   border-bottom: 1px solid #333;
-  font-size: 24px;
+  font-size: 20px;
   overflow: hidden;
 }
 
-.highlight-list {
+.picker_chosen_list {
   position: absolute;
   width: 100%;
   margin: 0;
@@ -451,32 +480,7 @@ body {
   list-style: none;
 }
 
-.highlight-list li {
+.picker_chosen_item {
   user-select: none;
-}
-
-.date-selector {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  width: 600px;
-  height: 300px;
-  transform: translate(-50%, -50%);
-  perspective: 2000px;
-}
-
-.date-selector > div {
-  flex: 1;
-}
-
-.date-selector .select-wrap {
-  font-size: 18px;
-}
-
-.date-selector .highlight {
-  font-size: 20px;
 }
 </style>
