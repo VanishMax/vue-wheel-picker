@@ -132,9 +132,9 @@ export default Vue.extend({
     },
 
     /**
-     * How sensible is Picker for touches. The bigger value you put, the more acceleration
-     * the picker gains after moving the touch.
-     * Must be in range from 0 to 10.
+     * How sensible is Picker for touches. The bigger value you put the more acceleration
+     * the Picker gains after moving the touch.
+     * Must be in the range from 0 to 10.
      */
     sensitivity: {
       type: Number,
