@@ -105,9 +105,18 @@ export default Vue.extend({
       type: Number,
       default: 40,
     },
+
+    /**
+     * How sensible is Picker for touches. The bigger value you put, the more acceleration
+     * the picker gains after moving the touch.
+     * Must be in range from 0 to 10.
+     */
     sensitivity: {
       type: Number,
-      default: 0.8,
+      default: 8,
+      validator: function (value) {
+        return value > 0 && value <= 10;
+      },
     },
 
     /**
@@ -118,11 +127,17 @@ export default Vue.extend({
     visibleOptionsAmount: {
       type: Number,
       default: 10,
+      validator: function (value) {
+        return value % 2 === 0;
+      }
     },
 
     type: {
       type: String as PropType<'normal' | 'infinite'>,
       default: 'normal',
+      validator: function (value) {
+        return ['normal', 'infinite'].includes(value);
+      }
     }
   },
 
@@ -132,9 +147,6 @@ export default Vue.extend({
   },
 
   data () {
-    const a = this.sensitivity * 10;
-    const minV = Math.sqrt(1 / a);
-
     return {
       listStyle: {
         transform: `transform: translate3d(0, 0, ${-this.radius}px) rotateX(0deg)`,
@@ -144,17 +156,11 @@ export default Vue.extend({
       },
 
       source: this.options, // Options {value: xx, text: xx}
-      onChange: null,
-
-      a, // Scroll deceleration (0.8 is sensitivity)
-      minV, // Minimal initial velocity
-
-      val: this.value || this.options?.[0] || null,
       selected: this.value || this.options?.[0] || null,
+      selectedIndex: this.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0,
 
-      exceedA: 10, // Is deceleration exceeded
-      moveT: 0, // Scroll tick
-      scroll: this.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0,
+      maxAcceleration: 10,
+      requestAnimationId: 0,
 
       touchData: {
         startY: 0,
@@ -173,7 +179,7 @@ export default Vue.extend({
   mounted () {
     document.addEventListener('mousedown', this._touchstart);
     document.addEventListener('mouseup', this._touchend);
-    this._selectByScroll(this.scroll);
+    this._selectByScroll(this.selectedIndex);
   },
 
   methods: {
@@ -184,7 +190,7 @@ export default Vue.extend({
       const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
       this.touchData.startY = eventY;
       this.touchData.yArr = [[eventY, new Date().getTime()]];
-      this.touchData.touchScroll = this.scroll;
+      this.touchData.touchScroll = this.selectedIndex;
       this._stop();
     },
 
@@ -193,7 +199,7 @@ export default Vue.extend({
       this.touchData.yArr.push([eventY, new Date().getTime()]);
 
       const scrollAdd = (this.touchData.startY - eventY) / this.itemHeight;
-      let moveToScroll = scrollAdd + this.scroll;
+      let moveToScroll = scrollAdd + this.selectedIndex;
 
       // When scrolling is not infinite, out of range makes scrolling difficult
       if (this.type === 'normal') {
@@ -230,7 +236,7 @@ export default Vue.extend({
         velocity = Math.abs(velocity) > 30 ? 30 * sign : velocity;
       }
 
-      this.scroll = this.touchData.touchScroll;
+      this.selectedIndex = this.touchData.touchScroll;
       this._animateMoveByVelocity(velocity);
     },
 
@@ -247,7 +253,7 @@ export default Vue.extend({
 
     _moveTo (scroll: number): number {
       if (this.type === 'infinite') {
-        this.scroll = this._normalizeScroll(scroll);
+        this.selectedIndex = this._normalizeScroll(scroll);
       }
 
       if (!this.source.length) {
@@ -273,41 +279,41 @@ export default Vue.extend({
     async _animateMoveByVelocity (initV: number) {
       let initScroll;
       let finalScroll;
-
       let totalScrollLen;
-      let a;
-      let t;
+
+      let a; // Acceleration
+      let t; // Time
 
       if (this.type === 'normal') {
-        if (this.scroll < 0 || this.scroll > this.source.length - 1) {
-          a = this.exceedA;
-          initScroll = this.scroll;
-          finalScroll = this.scroll < 0 ? 0 : this.source.length - 1;
+        if (this.selectedIndex < 0 || this.selectedIndex > this.source.length - 1) {
+          a = this.maxAcceleration;
+          initScroll = this.selectedIndex;
+          finalScroll = this.selectedIndex < 0 ? 0 : this.source.length - 1;
           totalScrollLen = initScroll - finalScroll;
           t = Math.sqrt(Math.abs(totalScrollLen / a));
 
           await this._animateToScroll(initScroll, finalScroll, t);
         } else {
-          initScroll = this.scroll;
-          a = initV > 0 ? -this.a : this.a; // Is acceleration or deceleration
+          initScroll = this.selectedIndex;
+          a = initV > 0 ? -this.sensitivity : this.sensitivity; // Is acceleration or deceleration
           t = Math.abs(initV / a); // Speed reduced to 0 takes time
           totalScrollLen = initV * t + a * t * t / 2; // Total rolling length
-          finalScroll = Math.round(this.scroll + totalScrollLen); // Round to ensure accuracy and finally scroll to an integer
+          finalScroll = Math.round(this.selectedIndex + totalScrollLen); // Round to ensure accuracy and finally scroll to an integer
           finalScroll = finalScroll < 0 ? 0 : (finalScroll > this.source.length - 1 ? this.source.length - 1 : finalScroll);
 
           totalScrollLen = finalScroll - initScroll;
           t = Math.sqrt(Math.abs(totalScrollLen / a));
-          await this._animateToScroll(this.scroll, finalScroll, t, 'easeOutQuart');
+          await this._animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
         }
       } else {
-        a = initV > 0 ? -this.a : this.a; // Deceleration/Acceleration
+        a = initV > 0 ? -this.sensitivity : this.sensitivity; // Deceleration/Acceleration
         t = Math.abs(initV / a); // Speed reduced to 0 takes time
         totalScrollLen = initV * t + a * t * t / 2; // Total rolling length
-        finalScroll = Math.round(this.scroll + totalScrollLen); // Round to ensure accuracy and finally scroll as an integer
-        await this._animateToScroll(this.scroll, finalScroll, t, 'easeOutQuart');
+        finalScroll = Math.round(this.selectedIndex + totalScrollLen); // Round to ensure accuracy and finally scroll as an integer
+        await this._animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
       }
 
-      this._selectByScroll(this.scroll);
+      this._selectByScroll(this.selectedIndex);
     },
 
     _animateToScroll (initScroll: number, finalScroll: number, time: number, easingName: keyof typeof easing = 'easeOutQuart') {
@@ -326,12 +332,12 @@ export default Vue.extend({
           pass = new Date().getTime() / 1000 - start;
 
           if (pass < time) {
-            this.scroll = this._moveTo(initScroll + easing[easingName](pass / time) * totalScrollLen);
-            this.moveT = requestAnimationFrame(tick);
+            this.selectedIndex = this._moveTo(initScroll + easing[easingName](pass / time) * totalScrollLen);
+            this.requestAnimationId = requestAnimationFrame(tick);
           } else {
             resolve();
             this._stop();
-            this.scroll = this._moveTo(initScroll + totalScrollLen);
+            this.selectedIndex = this._moveTo(initScroll + totalScrollLen);
           }
         };
         tick();
@@ -339,7 +345,7 @@ export default Vue.extend({
     },
 
     _stop () {
-      cancelAnimationFrame(this.moveT);
+      cancelAnimationFrame(this.requestAnimationId);
     },
 
     _selectByScroll (scroll: number) {
@@ -350,7 +356,7 @@ export default Vue.extend({
       }
 
       this._moveTo(scroll);
-      this.scroll = scroll;
+      this.selectedIndex = scroll;
       this.selected = this.source[scroll];
       this.$emit('change', this.selected);
     }
@@ -380,6 +386,7 @@ body {
   content: '';
   width: 100%;
   height: 50%;
+  pointer-events: none;
 }
 
 .select-wrap:before {
