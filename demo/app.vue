@@ -1,9 +1,9 @@
 <template>
-  <div id="app">
+  <div>
     <header class="header">
       <h1>iOS-like Picker</h1>
       <a href="https://github.com/VanishMax/picker" target="_blank">
-        <img src="./github.png" alt="github link">
+        <img src="/github.png" alt="github link">
       </a>
     </header>
 
@@ -115,7 +115,7 @@ export default Vue.extend({
 });
 </script>
 
-<style>
+<style lang="css">
 body {
   font-family: Arial sans-serif;
   margin: 0;
