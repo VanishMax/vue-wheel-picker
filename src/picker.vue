@@ -209,8 +209,8 @@ export default Vue.extend({
   },
 
   mounted () {
-    document.addEventListener('mousedown', this.touchstart);
-    document.addEventListener('mouseup', this.touchend);
+    document.addEventListener('mousedown', this.touchstart as EventListener);
+    document.addEventListener('mouseup', this.touchend as EventListener);
 
     // Move to the initial value
     this.animateToScroll(0, this.selectedIndex);
@@ -229,8 +229,8 @@ export default Vue.extend({
 
   methods: {
     touchstart (e: MouseOrTouch) {
-      if (e.target) e.target.addEventListener('touchmove', this.touchmove);
-      document.addEventListener('mousemove', this.touchmove);
+      if (e.target) e.target.addEventListener('touchmove', this.touchmove as EventListener);
+      document.addEventListener('mousemove', this.touchmove as EventListener);
 
       const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
       this.touchData.startY = eventY;
@@ -261,8 +261,8 @@ export default Vue.extend({
     },
 
     touchend (e: TouchEvent) {
-      if (e.target) e.target.removeEventListener('touchmove', this.touchmove);
-      document.removeEventListener('mousemove', this.touchmove);
+      if (e.target) e.target.removeEventListener('touchmove', this.touchmove as EventListener);
+      document.removeEventListener('mousemove', this.touchmove as EventListener);
 
       let velocity;
 

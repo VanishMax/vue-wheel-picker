@@ -1,7 +1,7 @@
 import _Vue, { PluginObject, VueConstructor } from 'vue';
 
 // Import vue component
-import component from '@/picker.vue';
+import component from './picker.vue';
 
 // Define typescript interfaces for installable component
 type InstallableComponent = VueConstructor<_Vue> & PluginObject<any>;

@@ -59,8 +59,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import Picker from '@/picker.vue';
-import { PickerValue } from '@/picker';
+import Picker, { PickerValue } from '../src/picker.vue';
 
 function getYears (): PickerValue[] {
   const currentYear = new Date().getFullYear();
