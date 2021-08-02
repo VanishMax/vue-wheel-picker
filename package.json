@@ -1,7 +1,7 @@
 {
-  "name": "picker",
+  "name": "@vanishmax/picker",
   "version": "0.1.0",
-  "description": "",
+  "description": "Picker is a Vue component that selects a value from the list by dragging the cylinder allowing users to experience the rolling effect",
   "main": "dist/picker.ssr.js",
   "browser": "dist/picker.esm.js",
   "module": "dist/picker.esm.js",
@@ -45,5 +45,21 @@
   },
   "engines": {
     "node": ">=14"
+  },
+  "keywords": [
+    "picker",
+    "vue",
+    "ui-components",
+    "javascript",
+    "typescript"
+  ],
+  "author": "VanishMax (https://vanishmax.com)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VanishMax/picker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/VanishMax/picker/issues"
   }
 }
