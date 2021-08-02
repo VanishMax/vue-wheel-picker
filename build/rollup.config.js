@@ -39,6 +39,7 @@ const baseConfig = {
     ],
     replace: {
       'process.env.NODE_ENV': JSON.stringify('production'),
+      preventAssignment: true,
     },
     vue: {
       css: true,
@@ -55,7 +56,7 @@ const baseConfig = {
     babel: {
       exclude: 'node_modules/**',
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.vue'],
-      babelHelpers: 'runtime',
+      babelHelpers: 'bundled',
     },
   },
 };
@@ -66,7 +67,6 @@ const external = [
   // list external dependencies, exactly the way it is written in the import statement.
   // eg. 'jquery'
   'vue',
-  /@babel\/runtime/
 ];
 
 // UMD/IIFE shared settings: output.globals

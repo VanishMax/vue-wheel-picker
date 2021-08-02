@@ -1,6 +1,6 @@
 {
   "name": "picker",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/picker.ssr.js",
   "browser": "dist/picker.esm.js",
@@ -15,6 +15,7 @@
   "sideEffects": false,
   "scripts": {
     "serve": "vue-cli-service serve demo/serve.ts",
+    "demo": "vue-cli-service build demo/serve.ts --dest demo-dist",
     "build": "cross-env NODE_ENV=production rollup --config build/rollup.config.js",
     "build:ssr": "cross-env NODE_ENV=production rollup --config build/rollup.config.js --format cjs",
     "build:es": "cross-env NODE_ENV=production rollup --config build/rollup.config.js --format es",
