@@ -105,6 +105,21 @@ export default Vue.extend({
       type: Number,
       default: 40,
     },
+    sensitivity: {
+      type: Number,
+      default: 0.8,
+    },
+
+    /**
+     * Amount of options that are visible on the ring of a Picker.
+     * At maximum, will display passed amount plus one chosen option in the center of the ring.
+     * Must be a multiple of 2 for the best experience.
+     */
+    visibleOptionsAmount: {
+      type: Number,
+      default: 10,
+    },
+
     type: {
       type: String as PropType<'normal' | 'infinite'>,
       default: 'normal',
@@ -117,8 +132,7 @@ export default Vue.extend({
   },
 
   data () {
-    const sensitivity = 0.8;
-    const a = sensitivity * 10;
+    const a = this.sensitivity * 10;
     const minV = Math.sqrt(1 / a);
 
     return {
@@ -129,13 +143,9 @@ export default Vue.extend({
         transform: `translate3d(0, 0, 0)`,
       },
 
-      count: 20, // Ring specification, the number of options on the ring, must be a multiple of 4
-      sensitivity,
       source: this.options, // Options {value: xx, text: xx}
       onChange: null,
 
-      halfCount: this.options.length / 2,
-      quarterCount: this.options.length / 4,
       a, // Scroll deceleration (0.8 is sensitivity)
       minV, // Minimal initial velocity
 
@@ -144,8 +154,7 @@ export default Vue.extend({
 
       exceedA: 10, // Is deceleration exceeded
       moveT: 0, // Scroll tick
-      moving: false,
-      scroll: 0,
+      scroll: this.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0,
 
       touchData: {
         startY: 0,
@@ -156,7 +165,7 @@ export default Vue.extend({
   },
 
   computed: {
-    rotationAngle () {
+    rotationAngle (): number {
       return 360 / this.source.length;
     },
   },
@@ -164,11 +173,12 @@ export default Vue.extend({
   mounted () {
     document.addEventListener('mousedown', this._touchstart);
     document.addEventListener('mouseup', this._touchend);
+    this._selectByScroll(this.scroll);
   },
 
   methods: {
     _touchstart (e: MouseOrTouch) {
-      e.target.addEventListener('touchmove', this._touchmove);
+      if (e.target) e.target.addEventListener('touchmove', this._touchmove);
       document.addEventListener('mousemove', this._touchmove);
 
       const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
@@ -200,13 +210,13 @@ export default Vue.extend({
     },
 
     _touchend (e: TouchEvent) {
-      e.target.removeEventListener('touchmove', this._touchmove);
+      if (e.target) e.target.removeEventListener('touchmove', this._touchmove);
       document.removeEventListener('mousemove', this._touchmove);
 
-      let v;
+      let velocity;
 
       if (this.touchData.yArr.length === 1) {
-        v = 0;
+        velocity = 0;
       } else {
         const startTime = this.touchData.yArr[this.touchData.yArr.length - 2][1];
         const endTime = this.touchData.yArr[this.touchData.yArr.length - 1][1];
@@ -214,17 +224,17 @@ export default Vue.extend({
         const endY = this.touchData.yArr[this.touchData.yArr.length - 1][0];
 
         // Calculated speed
-        v = ((startY - endY) / this.itemHeight) * 1000 / (endTime - startTime);
-        const sign = v > 0 ? 1 : -1;
+        velocity = ((startY - endY) / this.itemHeight) * 1000 / (endTime - startTime);
+        const sign = velocity > 0 ? 1 : -1;
 
-        v = Math.abs(v) > 30 ? 30 * sign : v;
+        velocity = Math.abs(velocity) > 30 ? 30 * sign : velocity;
       }
 
       this.scroll = this.touchData.touchScroll;
-      this._animateMoveByInitV(v);
+      this._animateMoveByVelocity(velocity);
     },
 
-    _normalizeScroll (scroll: number) {
+    _normalizeScroll (scroll: number): number {
       let normalizedScroll = scroll;
 
       while (normalizedScroll < 0) {
@@ -248,16 +258,11 @@ export default Vue.extend({
       this.highlightListStyle.transform = `translate3d(0, ${-(scroll) * this.itemHeight}px, 0)`;
 
       this.source = this.source.map((item, index) => {
-        item.visibility = Math.abs(index - scroll) <= this.quarterCount;
+        item.visibility = Math.abs(index - scroll) <= this.visibleOptionsAmount / 2;
         return item;
       });
 
       return scroll;
-    },
-
-    _stop () {
-      this.moving = false;
-      cancelAnimationFrame(this.moveT);
     },
 
     /**
@@ -265,7 +270,7 @@ export default Vue.extend({
      * @param {init} initV， initV Will be reset
      * To ensure scrolling to integers based on acceleration of scroll (Guaranteed to pass Scroll Target a selected value)
      */
-    async _animateMoveByInitV (initV: number) {
+    async _animateMoveByVelocity (initV: number) {
       let initScroll;
       let finalScroll;
 
@@ -279,17 +284,15 @@ export default Vue.extend({
           initScroll = this.scroll;
           finalScroll = this.scroll < 0 ? 0 : this.source.length - 1;
           totalScrollLen = initScroll - finalScroll;
-
           t = Math.sqrt(Math.abs(totalScrollLen / a));
-          initV = a * t;
-          initV = this.scroll > 0 ? -initV : initV;
+
           await this._animateToScroll(initScroll, finalScroll, t);
         } else {
           initScroll = this.scroll;
-          a = initV > 0 ? -this.a : this.a; // 减速加速度
-          t = Math.abs(initV / a); // 速度减到 0 花费时间
-          totalScrollLen = initV * t + a * t * t / 2; // 总滚动长度
-          finalScroll = Math.round(this.scroll + totalScrollLen); // 取整，确保准确最终 scroll 为整数
+          a = initV > 0 ? -this.a : this.a; // Is acceleration or deceleration
+          t = Math.abs(initV / a); // Speed reduced to 0 takes time
+          totalScrollLen = initV * t + a * t * t / 2; // Total rolling length
+          finalScroll = Math.round(this.scroll + totalScrollLen); // Round to ensure accuracy and finally scroll to an integer
           finalScroll = finalScroll < 0 ? 0 : (finalScroll > this.source.length - 1 ? this.source.length - 1 : finalScroll);
 
           totalScrollLen = finalScroll - initScroll;
@@ -307,8 +310,8 @@ export default Vue.extend({
       this._selectByScroll(this.scroll);
     },
 
-    _animateToScroll (initScroll: number, finalScroll: number, t: number, easingName: keyof typeof easing = 'easeOutQuart') {
-      if (initScroll === finalScroll || t === 0) {
+    _animateToScroll (initScroll: number, finalScroll: number, time: number, easingName: keyof typeof easing = 'easeOutQuart') {
+      if (initScroll === finalScroll || time === 0) {
         this._moveTo(initScroll);
 
         return;
@@ -319,12 +322,11 @@ export default Vue.extend({
       const totalScrollLen = finalScroll - initScroll;
 
       return new Promise<void>((resolve) => {
-        this.moving = true;
         const tick = () => {
           pass = new Date().getTime() / 1000 - start;
 
-          if (pass < t) {
-            this.scroll = this._moveTo(initScroll + easing[easingName](pass / t) * totalScrollLen);
+          if (pass < time) {
+            this.scroll = this._moveTo(initScroll + easing[easingName](pass / time) * totalScrollLen);
             this.moveT = requestAnimationFrame(tick);
           } else {
             resolve();
@@ -334,6 +336,10 @@ export default Vue.extend({
         };
         tick();
       });
+    },
+
+    _stop () {
+      cancelAnimationFrame(this.moveT);
     },
 
     _selectByScroll (scroll: number) {
@@ -346,8 +352,7 @@ export default Vue.extend({
       this._moveTo(scroll);
       this.scroll = scroll;
       this.selected = this.source[scroll];
-      this.value = this.selected.value;
-      // this.options.onChange?.(this.selected);
+      this.$emit('change', this.selected);
     }
   },
 });
@@ -409,6 +414,7 @@ body {
   left: 0;
   width: 100%;
   height: 50px;
+  user-select: none;
   -webkit-font-smoothing: subpixel-antialiased;
 }
 
@@ -436,6 +442,10 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.highlight-list li {
+  user-select: none;
 }
 
 .date-selector {
