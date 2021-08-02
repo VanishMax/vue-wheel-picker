@@ -322,7 +322,7 @@ export default Vue.extend({
      * @param {init} initV， initV Will be reset
      * To ensure scrolling to integers based on acceleration of scroll (Guaranteed to pass Scroll Target a selected value)
      */
-    async animateMoveByVelocity (initV: number) {
+    animateMoveByVelocity (initV: number) {
       let initScroll;
       let finalScroll;
       let totalScrollLen;
@@ -338,7 +338,7 @@ export default Vue.extend({
           totalScrollLen = initScroll - finalScroll;
           t = Math.sqrt(Math.abs(totalScrollLen / a));
 
-          await this.animateToScroll(initScroll, finalScroll, t);
+          this.animateToScroll(initScroll, finalScroll, t)?.then(() => this.selectByScroll(this.selectedIndex));
         } else {
           initScroll = this.selectedIndex;
           a = initV > 0 ? -this.sensitivity : this.sensitivity; // Is acceleration or deceleration
@@ -349,17 +349,15 @@ export default Vue.extend({
 
           totalScrollLen = finalScroll - initScroll;
           t = Math.sqrt(Math.abs(totalScrollLen / a));
-          await this.animateToScroll(this.selectedIndex, finalScroll, t);
+          this.animateToScroll(this.selectedIndex, finalScroll, t)?.then(() => this.selectByScroll(this.selectedIndex));
         }
       } else {
         a = initV > 0 ? -this.sensitivity : this.sensitivity; // Deceleration/Acceleration
         t = Math.abs(initV / a); // Speed reduced to 0 takes time
         totalScrollLen = initV * t + a * t * t / 2; // Total rolling length
         finalScroll = Math.round(this.selectedIndex + totalScrollLen); // Round to ensure accuracy and finally scroll as an integer
-        await this.animateToScroll(this.selectedIndex, finalScroll, t);
+        this.animateToScroll(this.selectedIndex, finalScroll, t)?.then(() => this.selectByScroll(this.selectedIndex));
       }
-
-      this.selectByScroll(this.selectedIndex);
     },
 
     animateToScroll (initScroll: number, finalScroll: number, time: number|null = null) {
