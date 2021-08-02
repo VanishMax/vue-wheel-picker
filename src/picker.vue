@@ -1,11 +1,20 @@
 <template>
   <div
     class="picker"
+    :style="{perspective: `${perspective}px`}"
     @mousedown="touchstart"
     @mouseup="touchend"
     @touchstart="touchstart"
     @touchend="touchend"
   >
+    <div
+      v-if="arrows"
+      class="picker_arrow top"
+      @click="animateToScroll(selectedIndex, selectedIndex - 1)"
+    >
+      <slot name="arrow-top" />
+    </div>
+
     <div class="picker_wrapper">
       <ul class="picker_options" :style="listStyle">
         <li
@@ -43,6 +52,14 @@
           </li>
         </ul>
       </div>
+    </div>
+
+    <div
+      v-if="arrows"
+      class="picker_arrow bottom"
+      @click="animateToScroll(selectedIndex, selectedIndex + 1)"
+    >
+      <slot name="arrow-bottom" />
     </div>
   </div>
 </template>
@@ -90,16 +107,25 @@ export default Vue.extend({
       default: () => ([]),
     },
 
+    /** Default value of the Picker. Use either as initial value or as a v-model */
     value: {
       type: Object as PropType<PickerValue|null>,
       default: null,
     },
 
+    /** How far is each item in the list from another */
     radius: {
       type: Number,
       default: 150,
     },
 
+    /** Defines 'how far is the Picker from the viewer'. Visually changes the circless-ness of the Picker. */
+    perspective: {
+      type: Number,
+      default: 200,
+    },
+
+    /** The height of each item in the list. Needed to properly calculate the position of them */
     itemHeight: {
       type: Number,
       default: 40,
@@ -138,6 +164,12 @@ export default Vue.extend({
       validator: function (value) {
         return ['normal', 'infinite'].includes(value);
       }
+    },
+
+    /** Whether the arrows for scrolling to top or to bottom are needed to be displayed */
+    arrows: {
+      type: Boolean,
+      default: false,
     },
   },
 
@@ -331,6 +363,10 @@ export default Vue.extend({
     },
 
     animateToScroll (initScroll: number, finalScroll: number, time: number|null = null) {
+      if (finalScroll > this.source.length - 1 || finalScroll < 0) {
+        return;
+      }
+
       if (time === null) {
         time = 0.125 * (Math.abs(finalScroll - initScroll));
       }
@@ -383,52 +419,15 @@ export default Vue.extend({
 </script>
 
 <style>
-body {
-  font-family: Arial sans-serif;
-  background: #000;
-}
-
 .picker {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  width: 600px;
-  height: 300px;
-  transform: translate(-50%, -50%);
-  perspective: 2000px;
+  position: relative;
 }
 
 .picker_wrapper {
-  flex: 1;
   position: relative;
   height: 100%;
-  text-align: center;
-  overflow: hidden;
-  font-size: 18px;
-  color: #ddd;
-}
-
-.picker_wrapper:before, .picker_wrapper:after {
-  position: absolute;
-  z-index: 1;
-  display: block;
-  content: '';
   width: 100%;
-  height: 50%;
-  pointer-events: none;
-}
-
-.picker_wrapper:before {
-  top: 0;
-  background-image: linear-gradient(to bottom, rgba(1, 1, 1, 0.5), rgba(1, 1, 1, 0));
-}
-
-.picker_wrapper:after {
-  bottom: 0;
-  background-image: linear-gradient(to top, rgba(1, 1, 1, 0.5), rgba(1, 1, 1, 0));
+  overflow: hidden;
 }
 
 .picker_options {
@@ -443,7 +442,6 @@ body {
   display: block;
   transform: translateZ(-150px) rotateX(0deg);
   -webkit-font-smoothing: subpixel-antialiased;
-  color: #666;
   list-style: none;
 }
 
@@ -460,12 +458,8 @@ body {
 .picker_chosen {
   position: absolute;
   top: 50%;
-  transform: translate(0, -50%);
   width: 100%;
-  background-color: #000;
-  border-top: 1px solid #333;
-  border-bottom: 1px solid #333;
-  font-size: 20px;
+  transform: translate(0, -50%);
   overflow: hidden;
 }
 
@@ -477,7 +471,11 @@ body {
   list-style: none;
 }
 
-.picker_chosen_item {
+.picker_chosen_item, .picker_arrow {
   user-select: none;
+}
+
+.picker_arrow {
+  cursor: pointer;
 }
 </style>
