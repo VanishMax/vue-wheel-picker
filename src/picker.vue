@@ -76,13 +76,9 @@ type MouseOrTouch = MouseEvents | TouchEvents;
 
 const isTouchEvent = (evt: MouseOrTouch): evt is TouchEvents => ['touchstart', 'touchmove', 'touchend'].includes(evt.type);
 
-const easing = {
-  easeOutCubic (pos: number) {
-    return (Math.pow((pos - 1), 3) + 1);
-  },
-  easeOutQuart (pos: number) {
-    return -(Math.pow((pos - 1), 4) - 1);
-  },
+/** EaseOutQuart easing function */
+const easing = (pos: number) => {
+  return -(Math.pow((pos - 1), 4) - 1);
 };
 
 export default Vue.extend({
@@ -185,8 +181,7 @@ export default Vue.extend({
     document.addEventListener('mouseup', this.touchend);
 
     // Move to the initial value
-    const time = 0.125 * (this.selectedIndex - 0);
-    this.animateToScroll(0, this.selectedIndex, time);
+    this.animateToScroll(0, this.selectedIndex);
   },
 
   watch: {
@@ -194,11 +189,9 @@ export default Vue.extend({
       if (val?.value === this.selected?.value) return;
 
       const newIndex = val?.value ? this.source.findIndex((option) => option.value === this.value?.value) : 0;
-      const time = 0.125 * (Math.abs(newIndex - this.selectedIndex));
-
       this.selected = val;
       this.selectedIndex = newIndex;
-      this.animateToScroll(this.selectedIndex, newIndex, time);
+      this.animateToScroll(this.selectedIndex, newIndex);
     },
   },
 
@@ -324,20 +317,24 @@ export default Vue.extend({
 
           totalScrollLen = finalScroll - initScroll;
           t = Math.sqrt(Math.abs(totalScrollLen / a));
-          await this.animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
+          await this.animateToScroll(this.selectedIndex, finalScroll, t);
         }
       } else {
         a = initV > 0 ? -this.sensitivity : this.sensitivity; // Deceleration/Acceleration
         t = Math.abs(initV / a); // Speed reduced to 0 takes time
         totalScrollLen = initV * t + a * t * t / 2; // Total rolling length
         finalScroll = Math.round(this.selectedIndex + totalScrollLen); // Round to ensure accuracy and finally scroll as an integer
-        await this.animateToScroll(this.selectedIndex, finalScroll, t, 'easeOutQuart');
+        await this.animateToScroll(this.selectedIndex, finalScroll, t);
       }
 
       this.selectByScroll(this.selectedIndex);
     },
 
-    animateToScroll (initScroll: number, finalScroll: number, time: number, easingName: keyof typeof easing = 'easeOutQuart') {
+    animateToScroll (initScroll: number, finalScroll: number, time: number|null = null) {
+      if (time === null) {
+        time = 0.125 * (Math.abs(finalScroll - initScroll));
+      }
+
       if (initScroll === finalScroll || time === 0) {
         this.moveTo(initScroll);
 
@@ -352,8 +349,8 @@ export default Vue.extend({
         const tick = () => {
           pass = new Date().getTime() / 1000 - start;
 
-          if (pass < time) {
-            this.selectedIndex = this.moveTo(initScroll + easing[easingName](pass / time) * totalScrollLen);
+          if (pass < (time as number)) {
+            this.selectedIndex = this.moveTo(initScroll + easing(pass / (time as number)) * totalScrollLen);
             this.requestAnimationId = requestAnimationFrame(tick);
           } else {
             resolve();
