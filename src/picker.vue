@@ -240,6 +240,8 @@ export default Vue.extend({
     },
 
     touchmove (e: MouseOrTouch) {
+      e.preventDefault();
+
       const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
       this.touchData.yArr.push([eventY, new Date().getTime()]);
 
@@ -419,12 +421,21 @@ export default Vue.extend({
 <style>
 .picker {
   position: relative;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.picker::-webkit-scrollbar {
+  display: none;
 }
 
 .picker_wrapper {
   position: relative;
   height: 100%;
   width: 100%;
+  flex-grow: 1;
   overflow: hidden;
 }
 

@@ -51,8 +51,8 @@
       type="normal"
       ref="picker"
     >
-      <template #arrow-top>⟨</template>
-      <template #arrow-bottom>⟨</template>
+      <template #arrow-top>⌃</template>
+      <template #arrow-bottom>⌃</template>
     </Picker>
   </div>
 </template>
@@ -122,6 +122,10 @@ body {
   padding: 0;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -163,12 +167,8 @@ body {
   margin: 0 auto;
 }
 
-.picker_arrow.top {
-  transform: rotate(90deg);
-}
-
 .picker_arrow.bottom {
-  transform: rotate(-90deg);
+  transform: rotate(180deg);
 }
 
 .picker_chosen {
