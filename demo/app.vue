@@ -102,7 +102,7 @@ export default Vue.extend({
     };
   },
   mounted () {
-    const pickerEl = this.$refs.picker.$el as HTMLDivElement;
+    const pickerEl = (this.$refs.picker as any).$el as HTMLDivElement;
     pickerEl.focus();
   },
   methods: {
