@@ -135,7 +135,7 @@ so you need to add only sizes and colors. Therefore, the Picker will surely suit
 | itemHeight           |              number             |    `40`    | The height of each item in the list. Needed to properly calculate the position of them                                                                                                                |
 | sensitivity          |              number             |     `8`    | How sensible is Picker for touches. The bigger value you put the more acceleration the Picker gains after moving the touch. Must be in the range from 0 to 10.                                        |
 | visibleOptionsAmount |              number             |    `10`    | Amount of options that are visible on the ring of a Picker. At maximum, will display passed amount plus one chosen option in the center of the ring. Must be a multiple of 2 for the best experience. |
-| type                 |      'normal' or 'infinite'     | `'normal'` | Not supported yet! If 'infinite' is passed, then you can scroll the Picker forever, all values will repeat                                                                                            |
+| type                 |      'normal' or 'infinite'     | `'normal'` | **Not supported yet!** If 'infinite' is passed, then you can scroll the Picker forever, all values will repeat                                                                                            |
 | arrows               |             boolean             |   `false`  | Whether the arrows for scrolling to top or to bottom are needed to be displayed                                                                                                                       |
 
 ## Arrows
