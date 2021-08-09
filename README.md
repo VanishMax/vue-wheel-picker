@@ -1,6 +1,13 @@
-# Picker
+# Vue Wheel Picker
 
 Picker is a Vue component that selects a value from the list by dragging the cylinder allowing users to experience the rolling effect.
+
+User can change Picker's value in several ways:
+* Drag the wheel (supports acceleration)
+* Use mobile touch moves
+* Click on the arrows to roll one element up or down
+* Use mouse wheel or touchpad
+* Use up or down arrows on the keyboard when the Picker is focused
 
 ![](./public/screen.png)
 
