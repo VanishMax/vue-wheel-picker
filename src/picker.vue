@@ -6,6 +6,7 @@
     @mouseup="touchend"
     @touchstart="touchstart"
     @touchend="touchend"
+    @wheel="debounced"
   >
     <div
       v-if="arrows"
@@ -77,6 +78,7 @@ export type TouchDataType = {
   startY: number,
   yArr: (number[])[],
   touchScroll: number,
+  delta: number,
 };
 
 type EventNames = 'touchstart'|'touchmove'|'touchend';
@@ -97,6 +99,16 @@ const isTouchEvent = (evt: MouseOrTouch): evt is TouchEvents => ['touchstart', '
 const easing = (pos: number) => {
   return -(Math.pow((pos - 1), 4) - 1);
 };
+
+const wheelDebounce = (start: Function, end: Function, timer: number) => {
+  let timeout: ReturnType<typeof setTimeout>;
+
+  return (e: WheelEvent) => {
+    clearTimeout(timeout);
+    start(e);
+    timeout = setTimeout(() => end(), timer);
+  };
+}
 
 export default Vue.extend({
   name: 'Picker',
@@ -193,11 +205,13 @@ export default Vue.extend({
 
       maxAcceleration: 10,
       requestAnimationId: 0,
+      wheeling: false,
 
       touchData: {
         startY: 0,
         yArr: [],
         touchScroll: 0,
+        delta: 0,
       } as TouchDataType,
     };
   },
@@ -205,6 +219,9 @@ export default Vue.extend({
   computed: {
     rotationAngle (): number {
       return 360 / this.source.length;
+    },
+    debounced (): Function {
+      return wheelDebounce(this.wheel, this.endWheel, 100);
     },
   },
 
@@ -228,25 +245,18 @@ export default Vue.extend({
   },
 
   methods: {
-    touchstart (e: MouseOrTouch) {
-      if (e.target) e.target.addEventListener('touchmove', this.touchmove as EventListener);
-      document.addEventListener('mousemove', this.touchmove as EventListener);
-
-      const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
-      this.touchData.startY = eventY;
-      this.touchData.yArr = [[eventY, new Date().getTime()]];
+    startRoll (yPos: number) {
+      this.touchData.startY = yPos;
+      this.touchData.yArr = [[yPos, new Date().getTime()]];
       this.touchData.touchScroll = this.selectedIndex;
       this.stop();
     },
 
-    touchmove (e: MouseOrTouch) {
-      e.preventDefault();
-
-      const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
-      this.touchData.yArr.push([eventY, new Date().getTime()]);
+    doRoll (yPos: number) {
+      this.touchData.yArr.push([yPos, new Date().getTime()]);
 
       // Calculate new selected index by the item height and the scrolled amount
-      const scrollAdd = (this.touchData.startY - eventY) / this.itemHeight;
+      const scrollAdd = (this.touchData.startY - yPos) / this.itemHeight;
       let moveToScroll = scrollAdd + this.selectedIndex;
 
       if (this.type === 'normal') {
@@ -262,10 +272,7 @@ export default Vue.extend({
       this.touchData.touchScroll = this.moveTo(moveToScroll);
     },
 
-    touchend (e: TouchEvent) {
-      if (e.target) e.target.removeEventListener('touchmove', this.touchmove as EventListener);
-      document.removeEventListener('mousemove', this.touchmove as EventListener);
-
+    endRoll () {
       let velocity;
 
       if (this.touchData.yArr.length === 1) {
@@ -285,6 +292,48 @@ export default Vue.extend({
 
       this.selectedIndex = this.touchData.touchScroll;
       this.animateMoveByVelocity(velocity);
+    },
+
+    touchstart (e: MouseOrTouch) {
+      if (e.target) e.target.addEventListener('touchmove', this.touchmove as EventListener);
+      document.addEventListener('mousemove', this.touchmove as EventListener);
+
+      const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
+      this.touchData.delta = 0;
+      this.startRoll(eventY);
+    },
+
+    touchmove (e: MouseOrTouch) {
+      e.preventDefault();
+
+      const eventY = isTouchEvent(e) ? e.touches[0].clientY : e.clientY;
+      this.doRoll(eventY);
+    },
+
+    wheel (e: WheelEvent) {
+      e.preventDefault();
+
+      if (!this.wheeling) {
+        console.log('start');
+        this.wheeling = true;
+        const startPos = e.clientY;
+        this.touchData.delta = e.deltaY;
+        this.startRoll(startPos);
+      } else {
+        this.touchData.delta -= e.deltaY;
+        this.doRoll(this.touchData.startY + this.touchData.delta);
+      }
+    },
+
+    endWheel () {
+      this.endRoll();
+      this.wheeling = false;
+    },
+
+    touchend (e: TouchEvent) {
+      if (e.target) e.target.removeEventListener('touchmove', this.touchmove as EventListener);
+      document.removeEventListener('mousemove', this.touchmove as EventListener);
+      this.endRoll();
     },
 
     normalizeScroll (scroll: number): number {
