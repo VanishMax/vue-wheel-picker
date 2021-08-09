@@ -7,6 +7,9 @@
     @touchstart="touchstart"
     @touchend="touchend"
     @wheel="debounced"
+    @keyup.up="animateToScroll(selectedIndex, selectedIndex - 1)"
+    @keyup.down="animateToScroll(selectedIndex, selectedIndex + 1)"
+    tabindex="0"
   >
     <div
       v-if="arrows"
@@ -478,6 +481,10 @@ export default Vue.extend({
 
 .picker::-webkit-scrollbar {
   display: none;
+}
+
+.picker:focus {
+  outline: none;
 }
 
 .picker_wrapper {

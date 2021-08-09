@@ -101,6 +101,10 @@ export default Vue.extend({
       } as Record<string, number|boolean>,
     };
   },
+  mounted () {
+    const pickerEl = this.$refs.picker.$el as HTMLDivElement;
+    pickerEl.focus();
+  },
   methods: {
     changeFilter (field: string, val: string|boolean) {
       if (typeof val === 'boolean') {
@@ -157,6 +161,10 @@ body {
   text-align: center;
   font-size: 18px;
   color: #bbbcc9;
+}
+
+.picker:focus {
+  box-shadow: 0 0 5px 0 rgba(0, 0, 0, .3);
 }
 
 .picker_arrow {
