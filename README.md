@@ -18,7 +18,7 @@ You can try the Picker with different properties passed to it in the prepared pl
 **NPM**. You can install Picker in different ways. The best one is through NPM:
 
 ```bash
-npm i @vanishmax/picker
+npm i vue-wheel-picker
 ```
 
 Then, import the Picker to your app and use it:
@@ -32,7 +32,7 @@ Then, import the Picker to your app and use it:
 
 <script>
   import Vue from 'vue'
-  import Picker from '@vanishmax/picker';
+  import Picker from 'vue-wheel-picker';
   
   function getYears () {
     const currentYear = new Date().getFullYear();
@@ -110,7 +110,7 @@ so you need to add only sizes and colors. Therefore, the Picker will surely suit
 
 <!-- Import Vue and Picker from UNPKG CDN -->
 <script src="https://unpkg.com/vue/dist/vue.js"></script>
-<script src="https://unpkg.com/@vanishmax/picker"></script>
+<script src="https://unpkg.com/vue-wheel-picker"></script>
 
 <!-- Initialize Vue app -->
 <script>
