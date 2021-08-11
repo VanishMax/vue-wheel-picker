@@ -138,6 +138,14 @@ so you need to add only sizes and colors. Therefore, the Picker will surely suit
 | type                 |      'normal' or 'infinite'     | `'normal'` | **Not supported yet!** If 'infinite' is passed, then you can scroll the Picker forever, all values will repeat                                                                                            |
 | arrows               |             boolean             |   `false`  | Whether the arrows for scrolling to top or to bottom are needed to be displayed                                                                                                                       |
 
+## Slots
+
+| Name         | Props                             | Description                                                                                    |
+|--------------|-----------------------------------|------------------------------------------------------------------------------------------------|
+| option       | `{ value: string, text: string }` | Slot inside the picker option which allows you to format the texts or add custom data in there |
+| arrow-top    |                                   | Arrow to roll up. See description below                                                        |
+| arrow-bottom |                                   | Arrow to roll down                                                                             |
+
 ## Arrows
 
 There is a built-in support for vertical arrows which pick the next or the previous value in the Picker. To use them, pass the property `arrows` to the component and add 2 slots like this:

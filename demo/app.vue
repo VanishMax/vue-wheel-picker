@@ -51,6 +51,9 @@
       type="normal"
       ref="picker"
     >
+      <template #option="option">
+        {{ option.text }} BC
+      </template>
       <template #arrow-top>⌃</template>
       <template #arrow-bottom>⌃</template>
     </Picker>

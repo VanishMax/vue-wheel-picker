@@ -34,7 +34,9 @@
           }"
           :data-index="i"
         >
-          {{ item.text }}
+          <slot name="option" v-bind="item">
+            {{ item.text }}
+          </slot>
         </li>
       </ul>
 
@@ -52,7 +54,9 @@
             class="picker_chosen_item"
             :style="`height: ${itemHeight}px`"
           >
-            {{ item.text }}
+            <slot name="option" v-bind="item">
+              {{ item.text }}
+            </slot>
           </li>
         </ul>
       </div>
@@ -70,6 +74,7 @@
 
 <script lang="ts">
 import Vue, { PropType } from 'vue';
+import { calculateVelocity } from '@/utils';
 
 export type PickerValue = {
   value: string,
@@ -276,23 +281,7 @@ export default Vue.extend({
     },
 
     endRoll () {
-      let velocity;
-
-      if (this.touchData.yArr.length === 1) {
-        velocity = 0;
-      } else {
-        const startTime = this.touchData.yArr[this.touchData.yArr.length - 2][1];
-        const endTime = this.touchData.yArr[this.touchData.yArr.length - 1][1];
-        const startY = this.touchData.yArr[this.touchData.yArr.length - 2][0];
-        const endY = this.touchData.yArr[this.touchData.yArr.length - 1][0];
-
-        // Calculated speed
-        velocity = ((startY - endY) / this.itemHeight) * 1000 / (endTime - startTime);
-        const sign = velocity > 0 ? 1 : -1;
-
-        velocity = Math.abs(velocity) > 30 ? 30 * sign : velocity;
-      }
-
+      const velocity = calculateVelocity(this.touchData.yArr, this.itemHeight);
       this.selectedIndex = this.touchData.touchScroll;
       this.animateMoveByVelocity(velocity);
     },
@@ -317,7 +306,6 @@ export default Vue.extend({
       e.preventDefault();
 
       if (!this.wheeling) {
-        console.log('start');
         this.wheeling = true;
         const startPos = e.clientY;
         this.touchData.delta = e.deltaY;
