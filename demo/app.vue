@@ -52,7 +52,7 @@
       ref="picker"
     >
       <template #option="option">
-        {{ option.text }} BC
+        {{ Math.abs(option.text) }} {{ option.value < 0 ? 'BC' : 'AC' }}
       </template>
       <template #arrow-top>⌃</template>
       <template #arrow-bottom>⌃</template>
@@ -62,15 +62,16 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import Picker, { PickerValue } from '../src/picker.vue';
+import Picker from '../src/picker.vue';
+import type { PickerValue } from '../src/utils';
 
 function getYears (): PickerValue[] {
   const currentYear = new Date().getFullYear();
   const years = [];
 
-  for (let i = currentYear - 20; i < currentYear + 20; i++) {
+  for (let i = currentYear - 3000; i < currentYear + 3000; i++) {
     years.push({
-      value: i.toString(),
+      value: i,
       text: i.toString(),
     });
   }
@@ -85,13 +86,13 @@ export default Vue.extend({
   },
   data () {
     const years = getYears();
-    const current = (new Date().getFullYear()).toString();
+    const current = (new Date().getFullYear());
 
     return {
       years,
       currentYear: {
         value: current,
-        text: current,
+        text: current.toString(),
       },
 
       filters: {

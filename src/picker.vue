@@ -22,7 +22,7 @@
     <div class="picker_wrapper">
       <ul class="picker_options" :style="listStyle">
         <li
-          v-for="(item, i) in source"
+          v-for="(item, i) in visibleOptions"
           :key="item.value"
           class="picker_option"
           :style="{
@@ -49,7 +49,7 @@
       >
         <ul class="picker_chosen_list" :style="highlightListStyle">
           <li
-            v-for="(item, i) in options"
+            v-for="(item, i) in visibleOptions"
             :key="i"
             class="picker_chosen_item"
             :style="`height: ${itemHeight}px`"
@@ -74,49 +74,16 @@
 
 <script lang="ts">
 import Vue, { PropType } from 'vue';
-import { calculateVelocity } from '@/utils';
-
-export type PickerValue = {
-  value: string,
-  text: string,
-  visibility?: boolean,
-}
-
-export type TouchDataType = {
-  startY: number,
-  yArr: (number[])[],
-  touchScroll: number,
-  delta: number,
-};
-
-type EventNames = 'touchstart'|'touchmove'|'touchend';
-
-interface MouseEvents extends MouseEvent {
-  type: 'mousedown'|'mousemove'|'mouseup',
-}
-
-interface TouchEvents extends TouchEvent {
-  type: EventNames,
-}
-
-type MouseOrTouch = MouseEvents | TouchEvents;
-
-const isTouchEvent = (evt: MouseOrTouch): evt is TouchEvents => ['touchstart', 'touchmove', 'touchend'].includes(evt.type);
-
-/** EaseOutQuart easing function */
-const easing = (pos: number) => {
-  return -(Math.pow((pos - 1), 4) - 1);
-};
-
-const wheelDebounce = (start: Function, end: Function, timer: number) => {
-  let timeout: ReturnType<typeof setTimeout>;
-
-  return (e: WheelEvent) => {
-    clearTimeout(timeout);
-    start(e);
-    timeout = setTimeout(() => end(), timer);
-  };
-}
+import {
+  calculateVelocity,
+  easing,
+  getVisibleOptions,
+  isTouchEvent,
+  MouseOrTouch,
+  PickerValue,
+  TouchDataType,
+  wheelDebounce,
+} from './utils';
 
 export default Vue.extend({
   name: 'Picker',
@@ -199,6 +166,11 @@ export default Vue.extend({
   },
 
   data () {
+    const selected = this.value?.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0;
+    const selectedIndex = selected > -1 ? selected : 0;
+    const options = getVisibleOptions(this.options, selectedIndex);
+    // const circular = initCircularBuffer(this.options, selectedIndex);
+
     return {
       listStyle: {
         transform: `transform: translate3d(0, 0, ${-this.radius}px) rotateX(0deg)`,
@@ -208,8 +180,12 @@ export default Vue.extend({
       },
 
       source: this.options, // Options {value: xx, text: xx}
+      visibleOptions: options.options,
+      visibleOptionsIndex: options.start,
+
       selected: this.value || this.options?.[0] || null,
-      selectedIndex: this.value?.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0,
+      selectedIndex,
+      prevSelectedIndex: selectedIndex,
 
       maxAcceleration: 10,
       requestAnimationId: 0,
@@ -225,11 +201,11 @@ export default Vue.extend({
   },
 
   computed: {
-    rotationAngle (): number {
-      return 360 / this.source.length;
-    },
     debounced (): Function {
       return wheelDebounce(this.wheel, this.endWheel, 100);
+    },
+    rotationAngle (): number {
+      return 360 / this.visibleOptions.length;
     },
   },
 
@@ -238,7 +214,7 @@ export default Vue.extend({
     document.addEventListener('mouseup', this.touchend as EventListener);
 
     // Move to the initial value
-    this.animateToScroll(0, this.selectedIndex);
+    this.moveTo(this.selectedIndex);
   },
 
   watch: {
@@ -247,12 +223,22 @@ export default Vue.extend({
 
       const newIndex = val?.value ? this.source.findIndex((option) => option.value === this.value?.value) : 0;
       this.selected = val;
-      this.selectedIndex = newIndex;
+      if (this.selectedIndex !== newIndex) this.selectedIndex = newIndex;
       this.animateToScroll(this.selectedIndex, newIndex);
     },
   },
 
   methods: {
+    changeSelectedIndex (newIndex: number) {
+      if (Math.abs(newIndex - this.prevSelectedIndex) > this.visibleOptionsAmount / 2) {
+        const options = getVisibleOptions(this.source, newIndex);
+        this.visibleOptions = options.options;
+        this.visibleOptionsIndex = options.start;
+        this.prevSelectedIndex = this.selectedIndex;
+      }
+      this.selectedIndex = newIndex;
+    },
+
     startRoll (yPos: number) {
       this.touchData.startY = yPos;
       this.touchData.yArr = [[yPos, new Date().getTime()]];
@@ -282,7 +268,7 @@ export default Vue.extend({
 
     endRoll () {
       const velocity = calculateVelocity(this.touchData.yArr, this.itemHeight);
-      this.selectedIndex = this.touchData.touchScroll;
+      this.changeSelectedIndex(this.touchData.touchScroll)
       this.animateMoveByVelocity(velocity);
     },
 
@@ -341,18 +327,18 @@ export default Vue.extend({
     /** Immediate move to some index in the options array */
     moveTo (newIndex: number): number {
       if (this.type === 'infinite') {
-        this.selectedIndex = this.normalizeScroll(newIndex);
+        this.changeSelectedIndex(this.normalizeScroll(newIndex));
       }
 
       if (!this.source.length) {
         return 0;
       }
 
-      this.listStyle.transform = `translate3d(0, 0, ${-this.radius}px) rotateX(${this.rotationAngle * newIndex}deg)`;
-      this.highlightListStyle.transform = `translate3d(0, ${-(newIndex) * this.itemHeight}px, 0)`;
+      this.listStyle.transform = `translate3d(0, 0, ${-this.radius}px) rotateX(${this.rotationAngle * (newIndex - this.visibleOptionsIndex)}deg)`;
+      this.highlightListStyle.transform = `translate3d(0, ${-(newIndex - this.visibleOptionsIndex) * this.itemHeight}px, 0)`;
 
-      this.source = this.source.map((item, index) => {
-        item.visibility = Math.abs(index - newIndex) <= this.visibleOptionsAmount / 2;
+      this.visibleOptions = this.visibleOptions.map((item, index) => {
+        item.visibility = Math.abs(this.visibleOptionsIndex + index - newIndex) <= this.visibleOptionsAmount / 2;
         return item;
       });
 
@@ -426,12 +412,12 @@ export default Vue.extend({
           pass = new Date().getTime() / 1000 - start;
 
           if (pass < (time as number)) {
-            this.selectedIndex = this.moveTo(initScroll + easing(pass / (time as number)) * totalScrollLen);
+            this.changeSelectedIndex(this.moveTo(initScroll + easing(pass / (time as number)) * totalScrollLen));
             this.requestAnimationId = requestAnimationFrame(tick);
           } else {
             resolve();
             this.stop();
-            this.selectedIndex = this.moveTo(initScroll + totalScrollLen);
+            this.changeSelectedIndex(this.moveTo(initScroll + totalScrollLen));
           }
         };
         tick();
