@@ -35,42 +35,13 @@ export const easing = (pos: number) => {
   return -(Math.pow((pos - 1), 4) - 1);
 };
 
-export const initCircularBuffer = (source: PickerValue[], current: number) => {
-  const len = source.length
-  if (len < MAX_RENDERED_AMOUNT) {
-    return {
-      cycle: source.map((item, index) => ({ ...item, sourceId: index })),
-      startIndex: 0,
-    };
-  }
-
-  const halfRendered = MAX_RENDERED_AMOUNT / 2;
-  const minIndex = current >= halfRendered ? current - halfRendered : 0;
-  const maxIndex = current > len - halfRendered ? len : current + halfRendered;
+export const getVisibleOptions = (source: PickerValue[], index: number) => {
+  const min = index - (MAX_RENDERED_AMOUNT / 2) < 0 ? 0 : index - (MAX_RENDERED_AMOUNT / 2);
+  const max = min + MAX_RENDERED_AMOUNT > (source.length) ? source.length : min + MAX_RENDERED_AMOUNT;
   return {
-    cycle: source.slice(minIndex, maxIndex).map((item, index) => ({ ...item, sourceId: minIndex + index })),
-    startIndex: 0,
+    options: source.slice(min, max),
+    start: Math.floor(min),
   };
-};
-
-export const changeCircularBuffer = (source: PickerValue[], cycle: PickerValue[], index: number, current: number) => {
-  for (let i = index; i < index + cycle.length / 2; i++) {
-    const sourceId = cycle[i % cycle.length].sourceId as number;
-    const prevIndex = index - i < 0 ? cycle.length - (index - i) : index - i;
-    const lastSourceId = cycle[prevIndex].sourceId as number;
-
-    let changed = false;
-    if (current >= MAX_RENDERED_AMOUNT + sourceId) {
-      cycle[i % cycle.length] = source[sourceId + Math.round(current - MAX_RENDERED_AMOUNT - sourceId)] as PickerValue;
-      changed = true;
-    }
-    if (current >= lastSourceId) {
-      cycle[prevIndex] = source[lastSourceId + Math.round(current - lastSourceId)] as PickerValue;
-      changed = true;
-    }
-
-    if (!changed) break;
-  }
 };
 
 export const calculateVelocity = (yArr: (number[])[], itemHeight: number) => {

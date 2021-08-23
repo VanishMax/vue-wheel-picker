@@ -86,13 +86,13 @@ export default Vue.extend({
   },
   data () {
     const years = getYears();
-    const current = (new Date().getFullYear()).toString();
+    const current = (new Date().getFullYear());
 
     return {
       years,
       currentYear: {
         value: current,
-        text: current,
+        text: current.toString(),
       },
 
       filters: {

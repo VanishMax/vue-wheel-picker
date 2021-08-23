@@ -75,8 +75,14 @@
 <script lang="ts">
 import Vue, { PropType } from 'vue';
 import {
-  PickerValue, TouchDataType, MouseOrTouch,
-  wheelDebounce, isTouchEvent, easing, calculateVelocity, getVisibleOptions, initCircularBuffer,
+  calculateVelocity,
+  easing,
+  getVisibleOptions,
+  isTouchEvent,
+  MouseOrTouch,
+  PickerValue,
+  TouchDataType,
+  wheelDebounce,
 } from './utils';
 
 export default Vue.extend({
@@ -160,8 +166,10 @@ export default Vue.extend({
   },
 
   data () {
-    const selectedIndex = this.value?.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0;
-    const circular = initCircularBuffer(this.options, selectedIndex);
+    const selected = this.value?.value ? this.options.findIndex((option) => option.value === this.value?.value) : 0;
+    const selectedIndex = selected > -1 ? selected : 0;
+    const options = getVisibleOptions(this.options, selectedIndex);
+    // const circular = initCircularBuffer(this.options, selectedIndex);
 
     return {
       listStyle: {
@@ -172,8 +180,8 @@ export default Vue.extend({
       },
 
       source: this.options, // Options {value: xx, text: xx}
-      visibleOptions: circular.cycle,
-      visibleOptionsIndex: circular.startIndex,
+      visibleOptions: options.options,
+      visibleOptionsIndex: options.start,
 
       selected: this.value || this.options?.[0] || null,
       selectedIndex,
@@ -206,7 +214,7 @@ export default Vue.extend({
     document.addEventListener('mouseup', this.touchend as EventListener);
 
     // Move to the initial value
-    this.animateToScroll(0, this.selectedIndex);
+    this.moveTo(this.selectedIndex);
   },
 
   watch: {
@@ -222,12 +230,12 @@ export default Vue.extend({
 
   methods: {
     changeSelectedIndex (newIndex: number) {
-      // if (Math.abs(newIndex - this.prevSelectedIndex) > this.visibleOptionsAmount / 2) {
-      //   const visible = getVisibleOptions(this.source, newIndex)
-      //   this.visibleOptions = visible.options;
-      //   this.visibleOptionsIndex = visible.startIndex;
-      //   this.prevSelectedIndex = newIndex;
-      // }
+      if (Math.abs(newIndex - this.prevSelectedIndex) > this.visibleOptionsAmount / 2) {
+        const options = getVisibleOptions(this.source, newIndex);
+        this.visibleOptions = options.options;
+        this.visibleOptionsIndex = options.start;
+        this.prevSelectedIndex = this.selectedIndex;
+      }
       this.selectedIndex = newIndex;
     },
 
@@ -326,10 +334,9 @@ export default Vue.extend({
         return 0;
       }
 
-      this.listStyle.transform = `translate3d(0, 0, ${-this.radius}px) rotateX(${this.rotationAngle * newIndex}deg)`;
-      this.highlightListStyle.transform = `translate3d(0, ${-(newIndex) * this.itemHeight}px, 0)`;
+      this.listStyle.transform = `translate3d(0, 0, ${-this.radius}px) rotateX(${this.rotationAngle * (newIndex - this.visibleOptionsIndex)}deg)`;
+      this.highlightListStyle.transform = `translate3d(0, ${-(newIndex - this.visibleOptionsIndex) * this.itemHeight}px, 0)`;
 
-      // console.log(this.visibleOptions, this.visibleOptionsIndex, newIndex);
       this.visibleOptions = this.visibleOptions.map((item, index) => {
         item.visibility = Math.abs(this.visibleOptionsIndex + index - newIndex) <= this.visibleOptionsAmount / 2;
         return item;
