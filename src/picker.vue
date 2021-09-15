@@ -255,9 +255,10 @@ export default Vue.extend({
 
       if (this.type === 'normal') {
         if (moveToScroll < 0) {
-          moveToScroll *= 0.3;
+          moveToScroll = this.wheeling ? Math.max(-1.5, moveToScroll * 0.05) : moveToScroll * 0.3;
         } else if (moveToScroll > this.source.length) {
-          moveToScroll = this.source.length + (moveToScroll - this.source.length) * 0.3;
+          const toPos = moveToScroll - this.source.length;
+          moveToScroll = this.source.length + (this.wheeling ? Math.min(1.5, toPos * 0.05) : toPos * 0.3);
         }
       } else {
         moveToScroll = this.normalizeScroll(moveToScroll);
