@@ -1,6 +1,6 @@
 {
   "name": "vue-wheel-picker",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Picker is a Vue component that selects a value from the list by dragging the cylinder allowing users to experience the rolling effect",
   "main": "dist/picker.ssr.js",
   "browser": "dist/picker.esm.js",
