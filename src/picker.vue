@@ -7,14 +7,14 @@
     @touchstart="touchstart"
     @touchend="touchend"
     @wheel="debounced"
-    @keyup.up="animateToScroll(selectedIndex, selectedIndex - 1)"
-    @keyup.down="animateToScroll(selectedIndex, selectedIndex + 1)"
+    @keyup.up="doManualSelect(selectedIndex, selectedIndex - 1)"
+    @keyup.down="doManualSelect(selectedIndex, selectedIndex + 1)"
     tabindex="0"
   >
     <div
       v-if="arrows"
       class="picker_arrow top"
-      @click="animateToScroll(selectedIndex, selectedIndex - 1)"
+      @click="doManualSelect(selectedIndex, selectedIndex - 1)"
     >
       <slot name="arrow-top" />
     </div>
@@ -65,7 +65,7 @@
     <div
       v-if="arrows"
       class="picker_arrow bottom"
-      @click="animateToScroll(selectedIndex, selectedIndex + 1)"
+      @click="doManualSelect(selectedIndex, selectedIndex + 1)"
     >
       <slot name="arrow-bottom" />
     </div>
@@ -440,7 +440,10 @@ export default Vue.extend({
       this.selectedIndex = scroll;
       this.selected = this.source[scroll];
       this.$emit('change', this.selected);
-    }
+    },
+    doManualSelect (initScroll: number, finalScroll: number, time: number|null = null) {
+      this.animateToScroll(initScroll, finalScroll, time)?.then(() => this.selectByScroll(this.selectedIndex));
+    },
   },
 });
 </script>
