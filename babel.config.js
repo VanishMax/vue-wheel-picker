@@ -3,4 +3,6 @@ module.exports = {
     ['@babel/preset-env'],
     '@babel/preset-typescript',
   ],
+  plugins: ['@babel/plugin-proposal-optional-chaining']
+
 };
